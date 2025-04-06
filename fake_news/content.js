@@ -1,8 +1,8 @@
 // content.js
 (function() {
   // Configuration
-  const BACKEND_URL = 'https://0c45-66-129-246-4.ngrok-free.app/api/check-fake-news';
-  const SUMMARIZE_URL = 'http://127.0.0.1:4000/api/summarize';
+  const BACKEND_URL = 'https://a88b-66-129-246-4.ngrok-free.app/api/check-fake-news';
+  const SUMMARIZE_URL = 'https://a88b-66-129-246-4.ngrok-free.app//api/summarize';
   
   // News site configuration for main headline selectors
   const NEWS_SITE_SELECTORS = {
