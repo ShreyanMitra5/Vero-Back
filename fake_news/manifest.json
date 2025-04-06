@@ -1,0 +1,60 @@
+// manifest.json
+{
+  "manifest_version": 3,
+  "name": "News Headline Fact Checker",
+  "version": "1.0",
+  "description": "Analyzes headlines on news websites for misleading content",
+  "permissions": ["activeTab", "scripting"],
+  "host_permissions": [
+    "*://*.cnn.com/*",
+    "*://*.nytimes.com/*",
+    "*://*.washingtonpost.com/*",
+    "*://*.bbc.com/*",
+    "*://*.foxnews.com/*",
+    "*://*.reuters.com/*",
+    "*://*.apnews.com/*",
+    "*://*.bloomberg.com/*",
+    "*://*.wsj.com/*",
+    "*://*.theguardian.com/*",
+    "*://*.nbcnews.com/*",
+    "*://*.cbsnews.com/*",
+    "*://*.abcnews.go.com/*",
+    "*://*.npr.org/*",
+    "*://*.politico.com/*",
+    "*://*.thehill.com/*",
+    "*://*.news.yahoo.com/*",
+    "*://*.huffpost.com/*",
+    "*://*.usatoday.com/*",
+    "*://*.latimes.com/*"
+  ],
+  "action": {
+    "default_title": "News Headline Fact Checker"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.cnn.com/*",
+        "*://*.nytimes.com/*",
+        "*://*.washingtonpost.com/*",
+        "*://*.bbc.com/*",
+        "*://*.foxnews.com/*",
+        "*://*.reuters.com/*",
+        "*://*.apnews.com/*",
+        "*://*.bloomberg.com/*",
+        "*://*.wsj.com/*",
+        "*://*.theguardian.com/*",
+        "*://*.nbcnews.com/*",
+        "*://*.cbsnews.com/*",
+        "*://*.abcnews.go.com/*",
+        "*://*.npr.org/*",
+        "*://*.politico.com/*",
+        "*://*.thehill.com/*",
+        "*://*.news.yahoo.com/*",
+        "*://*.huffpost.com/*",
+        "*://*.usatoday.com/*",
+        "*://*.latimes.com/*"
+      ],
+      "js": ["content.js"]
+    }
+  ]
+}
