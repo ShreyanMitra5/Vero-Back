@@ -6,6 +6,9 @@ import os
 # Import the FakeNewsPredictor class from test2.py
 from test2 import FakeNewsPredictor
 
+# Import the summarize_article function from summarize.py
+from summarize import summarize_article
+
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
@@ -41,6 +44,33 @@ def check_fake_news():
         }
         
         return jsonify(response)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/summarize', methods=['POST'])
+def summarize():
+    """API endpoint to summarize article text
+    Expects a JSON with 'article' field and optional 'num_sentences' field
+    Returns the summarized text
+    """
+    # Get the article from the request
+    data = request.json
+    if not data or 'article' not in data:
+        return jsonify({'error': 'No article provided'}), 400
+    
+    article = data['article']
+    num_sentences = data.get('num_sentences', 3)  # Default to 3 sentences if not specified
+    
+    try:
+        # Generate summary
+        summary = summarize_article(article, num_sentences)
+        
+        # Return the summary
+        return jsonify({
+            'original_article': article,
+            'summary': summary,
+            'num_sentences': num_sentences
+        })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

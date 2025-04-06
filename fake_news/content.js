@@ -2,6 +2,7 @@
 (function() {
   // Configuration
   const BACKEND_URL = 'https://0c45-66-129-246-4.ngrok-free.app/api/check-fake-news';
+  const SUMMARIZE_URL = 'http://127.0.0.1:4000/api/summarize';
   
   // News site configuration for main headline selectors
   const NEWS_SITE_SELECTORS = {
@@ -141,6 +142,9 @@
         headline.setAttribute('data-fact-checked', 'true');
       }
     });
+    
+    // Find and process article content for summarization
+    processArticleContent();
   }
   
   // Send the headline to the backend for analysis
@@ -664,6 +668,225 @@
       }
     `;
     document.head.appendChild(style);
+  }
+  
+  // Find and process article content for summarization
+  function processArticleContent() {
+    const selectors = getSelectorsForSite();
+    const articleElements = document.querySelectorAll(selectors.article);
+    
+    if (!articleElements || articleElements.length === 0) {
+      return;
+    }
+    
+    // Find the main article element (usually the first one or the longest one)
+    let mainArticle = articleElements[0];
+    let maxLength = mainArticle.textContent.length;
+    
+    // Find the longest article content if there are multiple candidates
+    for (let i = 1; i < articleElements.length; i++) {
+      const length = articleElements[i].textContent.length;
+      if (length > maxLength) {
+        maxLength = length;
+        mainArticle = articleElements[i];
+      }
+    }
+    
+    // Skip if article is too short or already has a summarize button
+    if (maxLength < 500 || mainArticle.querySelector('.article-summarize-button')) {
+      return;
+    }
+    
+    // Create summarize button
+    addSummarizeButton(mainArticle);
+  }
+  
+  // Add a summarize button to the article
+  function addSummarizeButton(articleElement) {
+    // Create button container
+    const buttonContainer = document.createElement('div');
+    buttonContainer.className = 'article-summarize-container';
+    buttonContainer.style.margin = '20px 0';
+    buttonContainer.style.textAlign = 'center';
+    
+    // Create the button
+    const summarizeButton = document.createElement('button');
+    summarizeButton.className = 'article-summarize-button';
+    summarizeButton.textContent = 'Summarize Article';
+    summarizeButton.style.padding = '10px 15px';
+    summarizeButton.style.backgroundColor = '#4285f4';
+    summarizeButton.style.color = 'white';
+    summarizeButton.style.border = 'none';
+    summarizeButton.style.borderRadius = '4px';
+    summarizeButton.style.cursor = 'pointer';
+    summarizeButton.style.fontWeight = 'bold';
+    summarizeButton.style.fontSize = '14px';
+    summarizeButton.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
+    summarizeButton.style.transition = 'all 0.2s ease';
+    
+    // Add hover effect
+    summarizeButton.addEventListener('mouseover', () => {
+      summarizeButton.style.backgroundColor = '#3367d6';
+    });
+    
+    summarizeButton.addEventListener('mouseout', () => {
+      summarizeButton.style.backgroundColor = '#4285f4';
+    });
+    
+    // Add click event
+    summarizeButton.addEventListener('click', () => {
+      // Change button state to loading
+      summarizeButton.disabled = true;
+      summarizeButton.textContent = 'Summarizing...';
+      summarizeButton.style.backgroundColor = '#cccccc';
+      
+      // Get article text
+      const articleText = articleElement.textContent.trim();
+      
+      // Call API to summarize
+      summarizeArticle(articleText, articleElement, summarizeButton);
+    });
+    
+    // Add button to container
+    buttonContainer.appendChild(summarizeButton);
+    
+    // Add container to beginning of article
+    articleElement.insertBefore(buttonContainer, articleElement.firstChild);
+  }
+  
+  // Extract clean article text (removing navigation, scripts, etc.)
+  function extractCleanArticleText(articleElement) {
+    // Create a deep clone of the article element to avoid modifying the original
+    const clone = articleElement.cloneNode(true);
+    
+    // Remove common non-article elements
+    const elementsToRemove = clone.querySelectorAll(
+      'nav, header, footer, aside, script, style, iframe, ' +
+      '.nav, .navigation, .menu, .social, .share, .related, ' +
+      '.comments, .ad, .advertisement, .sidebar, .promo, ' +
+      '.newsletter, .subscribe, .subscription, .copyright'
+    );
+    
+    elementsToRemove.forEach(el => {
+      if (el && el.parentNode) {
+        el.parentNode.removeChild(el);
+      }
+    });
+    
+    // Get paragraphs which are more likely to be article content
+    const paragraphs = Array.from(clone.querySelectorAll('p'));
+    
+    // Filter out very short paragraphs (likely not part of the main content)
+    const contentParagraphs = paragraphs.filter(p => {
+      const text = p.textContent.trim();
+      return text.length > 40 && text.split(' ').length > 8;
+    });
+    
+    // If we have enough paragraphs, use only those
+    if (contentParagraphs.length >= 3) {
+      return contentParagraphs.map(p => p.textContent.trim()).join(' ');
+    }
+    
+    // Fallback: use the cleaned clone's text content
+    return clone.textContent.trim();
+  }
+  
+  // Send article to API for summarization
+  async function summarizeArticle(articleText, articleElement, button) {
+    try {
+      // Extract clean article text
+      const cleanArticleText = extractCleanArticleText(articleElement);
+      console.log(`Sending article to summarize API: ${cleanArticleText.substring(0, 100)}...`);
+      
+      const response = await fetch(SUMMARIZE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          article: cleanArticleText,
+          num_sentences: 5  // Request 5 sentences for the summary
+        })
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Network response was not ok: ${response.status} - ${errorText}`);
+      }
+      
+      const result = await response.json();
+      console.log('API summary response:', result);
+      
+      // Display the summary
+      displaySummary(result.summary, articleElement, button);
+      
+    } catch (error) {
+      console.error('Error summarizing article:', error);
+      
+      // Reset button
+      button.disabled = false;
+      button.textContent = 'Summarize Article';
+      button.style.backgroundColor = '#4285f4';
+      
+      // Show error
+      alert('Error summarizing article. Please try again.');
+    }
+  }
+  
+  // Display the summary in the page
+  function displaySummary(summaryText, articleElement, button) {
+    // Create summary container
+    const summaryContainer = document.createElement('div');
+    summaryContainer.className = 'article-summary-container';
+    summaryContainer.style.margin = '20px 0';
+    summaryContainer.style.padding = '15px';
+    summaryContainer.style.backgroundColor = '#f8f9fa';
+    summaryContainer.style.border = '1px solid #dadce0';
+    summaryContainer.style.borderRadius = '8px';
+    summaryContainer.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+    
+    // Create header
+    const summaryHeader = document.createElement('div');
+    summaryHeader.style.fontWeight = 'bold';
+    summaryHeader.style.fontSize = '16px';
+    summaryHeader.style.marginBottom = '10px';
+    summaryHeader.style.color = '#202124';
+    summaryHeader.textContent = 'Article Summary';
+    
+    // Create summary text
+    const summaryContent = document.createElement('div');
+    summaryContent.style.lineHeight = '1.5';
+    summaryContent.style.color = '#202124';
+    summaryContent.textContent = summaryText;
+    
+    // Assemble the summary
+    summaryContainer.appendChild(summaryHeader);
+    summaryContainer.appendChild(summaryContent);
+    
+    // Get the button container
+    const buttonContainer = button.parentElement;
+    
+    // Replace button with "Show Full Article" button
+    button.textContent = 'Show Full Article';
+    button.style.backgroundColor = '#4285f4';
+    button.disabled = false;
+    
+    // Toggle between summary and full article
+    let showingSummary = true;
+    button.addEventListener('click', () => {
+      if (showingSummary) {
+        // Hide summary, show full article
+        summaryContainer.style.display = 'none';
+        button.textContent = 'Show Summary';
+        showingSummary = false;
+      } else {
+        // Show summary, hide full article
+        summaryContainer.style.display = 'block';
+        button.textContent = 'Show Full Article';
+        showingSummary = true;
+      }
+    });
+    
+    // Insert summary after the button container
+    buttonContainer.parentNode.insertBefore(summaryContainer, buttonContainer.nextSibling);
   }
   
   // Initialize
